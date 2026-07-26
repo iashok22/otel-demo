@@ -4,6 +4,7 @@ import random
 import time
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -157,3 +158,8 @@ def chaos():
         (time.perf_counter() - start) * 1000, {"endpoint": "chaos"}
     )
     return {"status": "ok", "delay_seconds": round(delay, 3)}
+
+
+# Mounted last so it only catches paths not already handled by an API route
+# above (e.g. `/`, `/index.html`) — serves the click-through demo UI.
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

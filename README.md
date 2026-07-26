@@ -3,6 +3,10 @@
 A minimal CRUD API instrumented end-to-end with OpenTelemetry (traces, metrics,
 logs), designed for demoing OTel concepts rather than for production use.
 
+For a line-by-line walkthrough of how each signal is generated and
+published (which file, which function, which SDK call), see
+[HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+
 ## Architecture
 
 ```
@@ -22,7 +26,9 @@ FastAPI app --OTLP/gRPC--> otel-collector --> Jaeger     (traces)
   SQLAlchemy spans, plus hand-written child spans), custom metrics
   (counters, a histogram, an up-down counter, plus psutil-backed
   process/system CPU and memory metrics), and structured logs with
-  `trace_id`/`span_id` injected automatically.
+  `trace_id`/`span_id` injected automatically. A small static demo UI
+  (`app/static/index.html`) is served at `/` for click-through demos
+  without curl.
 - **otel-collector**: receives all 3 signals over OTLP and fans them out —
   this is the piece worth pointing at when explaining "vendor-neutral
   pipeline" and "receiver/processor/exporter" concepts.
@@ -46,6 +52,21 @@ Wait ~10s for Loki to become healthy, then:
 - Jaeger UI: http://localhost:16686
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (anonymous admin access, no login needed)
+
+## Accessing the UIs
+
+| UI | URL | What it's for |
+|---|---|---|
+| **Demo web UI** | http://localhost:8000/ | Click-through page to create/list/get/delete items and fire `/chaos` requests, with links to all the observability UIs — no curl needed |
+| Swagger / OpenAPI docs | http://localhost:8000/docs | Try the API interactively (`POST /items`, `GET /items`, `GET /chaos`, etc.) without curl |
+| ReDoc (alt API docs) | http://localhost:8000/redoc | Read-only, more readable rendering of the same OpenAPI spec |
+| Jaeger UI | http://localhost:16686 | Browse traces — select service `otel-demo-api`, inspect span trees, timings, and attributes |
+| Prometheus UI | http://localhost:9090 | Run raw PromQL queries against the metrics, check scrape target health under Status → Targets |
+| Grafana | http://localhost:3000 | Pre-built dashboard, Explore (Loki/Prometheus/Jaeger ad-hoc queries), trace↔log correlation. Anonymous access is enabled — no login needed |
+| ↳ Grafana dashboard | http://localhost:3000/d/otel-demo/otel-demo | The pre-provisioned dashboard: traffic, errors, latency, active requests, CPU/memory, logs |
+| ↳ Grafana Explore | http://localhost:3000/explore | Ad-hoc LogQL/PromQL queries and one-off trace lookups (pick a datasource in the top-left dropdown) |
+
+Loki itself has no standalone UI — it's queried entirely through Grafana (dashboard/Explore) or its raw HTTP API (`http://localhost:3100/loki/api/v1/query_range`).
 
 ## Generating demo traffic
 
@@ -106,6 +127,7 @@ for i in $(seq 1 30); do curl -s http://localhost:8000/chaos > /dev/null; done
 |---|---|
 | `app/telemetry.py` | OTel SDK bootstrap: tracer/meter/logger providers, OTLP exporters |
 | `app/main.py` | CRUD endpoints + custom spans/metrics + `/chaos` demo endpoint |
+| `app/static/index.html` | Click-through demo web UI (create/list/delete items, fire chaos) |
 | `otel-collector-config.yaml` | Collector receiver/processor/exporter pipeline |
 | `grafana/provisioning/datasources/datasources.yml` | Prometheus/Loki/Jaeger datasources + correlation |
 | `grafana/provisioning/dashboards/json/otel-demo.json` | Pre-built dashboard: traffic, errors, latency, active requests, CPU/memory, logs |
